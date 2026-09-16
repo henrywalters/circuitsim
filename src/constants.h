@@ -5,7 +5,7 @@
 #ifndef HGAMETEMPLATE_CONSTANTS_H
 #define HGAMETEMPLATE_CONSTANTS_H
 
-#define GAME_NAME "GAME TEMPLATE"
+#define GAME_NAME "Circuit Sim"
 #define GAME_SIZE hg::graphics::FULL_HD
 #define GAME_VERSION "0.0.1"
 

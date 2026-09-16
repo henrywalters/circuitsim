@@ -12,6 +12,7 @@
 #include "common/gameState.h"
 #include "scenes/editor.h"
 #include "commands/settings.h"
+#include "scenes/runtime.h"
 
 #if USE_IMGUI
 #include "imgui.h"
@@ -51,6 +52,7 @@ void Game::onInit() {
     auto loading = static_cast<hg::Loading*>(scenes()->add<hg::Loading>("loading", m_window, settings));
 
     scenes()->add<Editor>("editor", m_window);
+    scenes()->add<Runtime>("runtime", m_window);
 
     loading->onFinish = [&]() {
 

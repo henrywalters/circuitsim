@@ -1,0 +1,92 @@
+{
+    "entities": [
+        {
+            "children": [],
+            "components": [
+                {
+                    "id": 1478935575,
+                    "name": "OrthographicCamera",
+                    "params": {
+                        "centered": true,
+                        "pixelsPerMeter": 100.0,
+                        "roundTo": 0.0,
+                        "size": [
+                            1920.0,
+                            1080.0
+                        ],
+                        "zFar": 1000.0,
+                        "zNear": -1000.0,
+                        "zoom": 1.0
+                    }
+                }
+            ],
+            "id": 3192803731,
+            "name": "quad",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "children": [],
+            "components": [
+                {
+                    "id": 651503923,
+                    "name": "Quad",
+                    "params": {
+                        "centered": true,
+                        "color": [
+                            1.0,
+                            1.0,
+                            1.0,
+                            1.0
+                        ],
+                        "offset": [
+                            0.0,
+                            0.0
+                        ],
+                        "size": [
+                            1.0,
+                            1.0
+                        ]
+                    }
+                }
+            ],
+            "id": 3425335301,
+            "name": "Camera",
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        }
+    ],
+    "scripts": []
+}

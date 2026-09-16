@@ -15,6 +15,8 @@
 #include <hagame/graphics/camera.h>
 #include <hagame/graphics/renderPasses.h>
 #include <hagame/graphics/primitives/quad.h>
+#include <hagame/graphics/primitives/circle.h>
+#include <hagame/graphics/primitives/grid.h>
 #include <hagame/graphics/mesh.h>
 #include <hagame/graphics/debug.h>
 #include <hagame/graphics/textBuffer.h>
@@ -69,8 +71,26 @@ private:
     hg::graphics::primitives::Quad m_displayQuad;
     hg::graphics::MeshInstance m_display;
 
+    hg::graphics::primitives::Grid m_gridPrim;
+    hg::graphics::MeshInstance m_grid;
+
+    hg::graphics::primitives::Disc m_lightPrim;
+    hg::graphics::MeshInstance m_light;
+
+    hg::graphics::primitives::Circle m_lightBorderPrim;
+    hg::graphics::MeshInstance m_lightBorder;
+
+    hg::graphics::primitives::Circle m_pinPrim;
+    hg::graphics::MeshInstance m_pin;
+
+    hg::graphics::primitives::Disc m_pinConnectedPrim;
+    hg::graphics::MeshInstance m_pinConnected;
+
+    hg::graphics::primitives::Line m_dragWirePrim;
+    hg::graphics::MeshInstance m_dragWire;
+
     struct Renderable {
-        std::function<void(hg::graphics::ShaderProgram*)> render;
+        std::function<void()> render;
         hg::Vec3 pos;
     };
 

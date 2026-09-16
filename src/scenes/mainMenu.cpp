@@ -38,6 +38,11 @@ void MainMenu::onInit() {
     };
 
     std::vector<MenuItem> menuItems {
+        {
+            "Runtime", [&]() {
+                game()->scenes()->activate("runtime");
+            }
+        },
             {"Editor",
              [&]() {
                  game()->scenes()->activate("editor");

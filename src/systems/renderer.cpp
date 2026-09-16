@@ -21,7 +21,13 @@
 #include "../constants.h"
 #include "../common/enums/debugLevel.h"
 #include "imgui.h"
+#include "../common/sizes.h"
+#include "../components/lead.h"
+#include "../components/light.h"
+#include "../components/pin.h"
+#include "../components/wire.h"
 #include "../scenes/editor.h"
+#include "../core/electronics/wire.h"
 
 using namespace hg;
 using namespace hg::graphics;
@@ -30,15 +36,51 @@ using namespace hg::ui;
 using namespace hg::math::components;
 
 HG_SYSTEM(Graphics, Renderer)
-
+void computeWire(Vec3 a, Vec3 b, primitives::Line& line) {
+    line.clearPoints();
+    auto delta = (b - a).normalized();
+    line.addPoint(a + delta * PIN_RADIUS);
+    line.addPoint(b - delta * PIN_RADIUS);
+    // line.addPoint(a);
+    //
+    // float dx = std::abs(b[0] - a[0]);
+    // float dy = std::abs(b[1] - a[1]);
+    //
+    // if (dy >= dx) {
+    //     // mostly vertical run -> split with a horizontal crossbar in the middle
+    //     float midY = (a[1] + b[1]) * 0.5f;
+    //     line.addPoint(Vec3(a[0], midY, a[2]));
+    //     line.addPoint(Vec3(b[0], midY, b[2]));
+    // } else {
+    //     // mostly horizontal run -> split with a vertical crossbar in the middle
+    //     float midX = (a[0] + b[0]) * 0.5f;
+    //     line.addPoint(Vec3(midX, a[1], a[2]));
+    //     line.addPoint(Vec3(midX, b[1], b[2]));
+    // }
+    //
+    // line.addPoint(b);
+}
 Renderer::Renderer(hg::graphics::Window *window):
-        window(window),
-        m_displayQuad((GAME_SIZE.cast<float>()), Vec2(0, 0), true),
-        m_display(&m_displayQuad),
-        m_animQuad(Vec2(1, 1)),
-        m_anim(&m_animQuad),
-        m_textBuffer(getFont("8bit"), "", Vec3::Zero(), TextHAlignment::Center, TextVAlignment::Center)
+    window(window),
+    m_displayQuad((GAME_SIZE.cast<float>()), Vec2(0, 0), true),
+    m_display(&m_displayQuad),
+    m_animQuad(Vec2(1, 1)),
+    m_anim(&m_animQuad),
+    m_textBuffer(getFont("8bit"), "", Vec3::Zero(), TextHAlignment::Center, TextVAlignment::Center),
+    m_gridPrim(Vec2(GRID_SIZE, GRID_SIZE), Vec2i(100, 100), GRID_THICKNESS),
+    m_grid(&m_gridPrim),
+    m_pinPrim(PIN_RADIUS, PIN_DIVISIONS, PIN_THICKNESS),
+    m_pin(&m_pinPrim),
+    m_pinConnectedPrim(PIN_RADIUS - PIN_THICKNESS, PIN_DIVISIONS),
+    m_pinConnected(&m_pinConnectedPrim),
+    m_lightPrim(LIGHT_RADIUS - LIGHT_THICKNESS, LIGHT_DIVISIONS),
+    m_light(&m_lightPrim),
+    m_lightBorderPrim(LIGHT_RADIUS, LIGHT_DIVISIONS, LIGHT_THICKNESS),
+    m_lightBorder(&m_lightBorderPrim),
+    m_dragWire(&m_dragWirePrim)
 {
+    m_dragWirePrim.thickness(WIRE_THICKNESS);
+
     m_displayQuad.centered(false);
     m_display.update(&m_displayQuad);
 }
@@ -101,13 +143,34 @@ void Renderer::onBeforeUpdate() {
         state->hasCamera = true;
     });
 
-    if (!state->running && state->editing) {
-        auto editor = ((Editor*)scene)->getEditor();
+    if (state->running) {
+        scene->entities.forEach<PerspectiveCamera>([&](hg::graphics::PerspectiveCamera* cam, hg::Entity* entity) {
+            view = cam->view();
+        projection = cam->projection();
+        camPos = entity->position();
+        state->pixelsPerMeter = 1.0f;
+        state->hasCamera = true;
+        });
+
+        scene->entities.forEach<OrthographicCamera>([&](hg::graphics::OrthographicCamera* cam, hg::Entity* entity) {
+            state->mousePos = cam->getGamePos(state->rawMousePos);
+
+            // state->mousePos[1] *= -1;
+            view = cam->view();
+            projection = cam->projection();
+            camPos = entity->position();
+            state->pixelsPerMeter = cam->pixelsPerMeter;
+            state->hasCamera = true;
+
+            m_gridPrim.thickness(GRID_THICKNESS * cam->zoom);
+            m_grid.update(&m_gridPrim);
+        });
+    } else if (state->editing) {
+        auto editor = static_cast<Editor*>(scene)->getEditor();
         if (editor->cameraMode == hge::CameraMode::Orthographic) {
             editor->orthographicCamera.zoomSpeed = 10;
             editor->orthographicCamera.size = GAME_SIZE.cast<float>();
             editor->orthographicCamera.pixelsPerMeter = 100;
-            // editor->orthographicCamera.pixelsPerMeter = state->pixelsPerMeter;
             view = editor->orthographicCamera.view();
             projection = editor->orthographicCamera.projection();
         } else {
@@ -155,7 +218,7 @@ void Renderer::onRender(double dt) {
     window->color(Color::black());
 
     glViewport(0, 0, GAME_SIZE[0], GAME_SIZE[1]);
-    m_renderPasses.clear(RenderMode::Color, Color::black());
+    m_renderPasses.clear(RenderMode::Color, CLEAR);
     m_renderPasses.clear(RenderMode::Lighting, Color::black());
     m_renderPasses.clear(RenderMode::Debug, Color::transparent());
     m_renderPasses.clear(RenderMode::UI, Color::transparent());
@@ -224,7 +287,102 @@ void Renderer::prepareGeometry() {
         m_batchRenderer.quads.batch(entity, quad);
     });
 
+    // m_geometry.push_back(Renderable{
+    //     [&]() {
+    //         auto shader = getShader(COLOR_SHADER.name);
+    //         shader->use();
+    //         shader->setMat4("projection", projection);
+    //         shader->setMat4("view", view);
+    //         shader->setMat4("model", Mat4::Translation(Vec3(-50 * GRID_SIZE, -50 * GRID_SIZE, -1)));
+    //         shader->setVec4("color", GRID);
+    //
+    //         m_grid.render();
+    //     },
+    //     Vec3(0, 0, 10)
+    // });
+
+    scene->entities.forEach<LightComponent>([&](LightComponent* light, Entity* entity) {
+        m_geometry.push_back(Renderable{
+            [&, entity, light]() {
+                auto shader = getShader(COLOR_SHADER.name);
+                shader->use();
+                shader->setMat4("projection", projection);
+                shader->setMat4("view", view);
+                shader->setMat4("model", entity->model());
+
+                if (light->on) {
+                    shader->setVec4("color", light->color);
+                    m_light.render();
+                }
+
+                shader->setVec4("color", WIRE);
+                m_lightBorder.render();
+            },
+            entity->position()
+        });
+    });
+
+    scene->entities.forEach<PinComponent>([&](PinComponent* pin, Entity* entity) {
+        m_geometry.push_back(Renderable{
+            [&, entity, pin]() {
+                auto shader = getShader(COLOR_SHADER.name);
+                shader->use();
+                shader->setMat4("projection", projection);
+                shader->setMat4("view", view);
+                shader->setMat4("model", entity->model());
+                shader->setVec4("color", WIRE);
+                m_pin.render();
+
+                if (pin->connectedTo.size() > 0) {
+                    m_pinConnected.render();
+                }
+            },
+            entity->position()
+        });
+    });
+
+    scene->entities.forEach<LeadComponent>([&](LeadComponent* lead, Entity* entity) {
+        m_geometry.push_back(Renderable{
+            [&, entity, lead]() {
+                auto shader = getShader(COLOR_SHADER.name);
+                shader->use();
+                shader->setMat4("projection", projection);
+                shader->setMat4("view", view);
+                shader->setMat4("model", entity->model());
+                shader->setVec4("color", WIRE);
+                m_pin.render();
+
+                if (lead->connectedTo.size() > 0) {
+                    m_pinConnected.render();
+                }
+            },
+            entity->position()
+        });
+    });
+
+    scene->entities.forEach<WireComponent>([&](WireComponent* pin, Entity* entity) {
+        m_geometry.push_back(Renderable{
+            [&, entity, pin]() {
+                auto shader = getShader(COLOR_SHADER.name);
+                shader->use();
+                shader->setMat4("projection", projection);
+                shader->setMat4("view", view);
+                shader->setMat4("model", entity->model());
+                shader->setVec4("color", WIRE);
+
+                auto leads = getWireLeads(entity);
+
+                computeWire(leads.a->entity->position(), leads.b->entity->position(), m_dragWirePrim);
+                m_dragWire.update(&m_dragWirePrim);
+
+                m_dragWire.render();
+            },
+            entity->position()
+        });
+    });
+
     scene->entities.forEach<Sprite>([&](auto sprite, Entity* entity) {
+        if (!sprite->visible) return;
         //m_batchRenderer.sprites.batch(entity, sprite);
         if (sprite->batched) {
             m_batchRenderer.sprites.batch(
@@ -236,15 +394,15 @@ void Renderer::prepareGeometry() {
                     entity->model()
             );
         } else {
-            m_geometry.push_back(Renderable{[&, sprite, entity](auto shader) {
+            m_geometry.push_back(Renderable{[&, sprite, entity]() {
                 auto asset = sprite->texture.asset();
                 if (!asset) return;
                 auto position = entity->position();
                 m_animQuad.setSizeAndOffset(sprite->size, sprite->offset);
                 m_anim.update(&m_animQuad);
-                //auto shader = getShader(TEXTURE_SHADER.name);
-                asset->bind();
+                auto shader = getShader(TEXTURE_SHADER.name);
                 shader->use();
+                asset->bind();
                 shader->setMat4("projection", projection);
                 shader->setMat4("view", view);
                 shader->setMat4("model", entity->model());
@@ -337,29 +495,21 @@ void Renderer::colorPass(double dt) {
 
     m_renderPasses.bind(RenderMode::Color);
 
-    // glEnable(GL_DEPTH_TEST);
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_BLEND);
 
-    auto shader = getShader(TEXTURE_SHADER.name);
+    auto shader = getShader(COLOR_SHADER.name);
     shader->use();
 
     shader->setMat4("projection", projection);
     shader->setMat4("view", view);
-
-    //shader->setMat4("projection", Mat4::Orthographic(-10, 10, -10, 10, 0.001, 100));
-    //shader->setMat4("view", Mat4::LookAt(camera.transform.position, camera.transform.position + Vec3::Face(), Vec3::Top()));
-
-//    scene->entities.forEach<DirectionalLight>([&](auto light, auto entity) {
-//        shader->setMat4("projection", Mat4::Orthographic(-10, 10, -10, 10, 1.0, 10.0));
-//        shader->setMat4("view", Mat4::LookAt(entity->position(), entity->position() + light->direction, Vec3::Face()));
-//
-//    });
 
     std::sort(m_geometry.begin(), m_geometry.end(), [&](const Renderable& a, const Renderable& b) {
         return (camPos - a.pos).magnitudeSq() < (camPos - b.pos).magnitudeSq();
     });
 
     for (const auto& geometry : m_geometry){
-        geometry.render(shader);
+        geometry.render();
     }
 
     m_renderPasses.render(RenderMode::Color, 7);

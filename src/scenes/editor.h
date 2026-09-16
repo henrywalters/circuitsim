@@ -20,6 +20,7 @@ public:
 protected:
 
     void onInit() override;
+    void onActivate() override;
     void onUpdate(double dt) override;
 
     hg::graphics::Window* m_window;

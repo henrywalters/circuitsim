@@ -18,6 +18,12 @@ Editor::Editor(hg::graphics::Window *window):
         m_editor(std::make_unique<hge::Editor>(this))
 {}
 
+void Editor::onActivate() {
+    auto state = GameState::Get();
+    state->editing = true;
+    state->running = false;
+}
+
 void Editor::onInit() {
     auto state = GameState::Get();
 
@@ -44,6 +50,8 @@ void Editor::onInit() {
 
 void Editor::onUpdate(double dt) {
     auto state = GameState::Get();
+
+    state->rawMousePos = m_editor->mousePos();
 
     auto renderer = getSystem<Renderer>();
 

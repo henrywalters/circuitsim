@@ -14,13 +14,6 @@
 #include "../common/enums/actions.h"
 #include "../common/persistentSettings.h"
 
-enum class EventType {
-    MoveTo,
-    MoveBack,
-};
-
-using Event = std::variant<>;
-
 // Access GameState via the singleton Get function
 class GameState {
 public:
@@ -33,12 +26,11 @@ public:
 
     hg::Vec2 rawMousePos;
     hg::Vec2 mousePos;
+    hg::Vec2 dragPos;
 
     float pixelsPerMeter = 1.0f;
 
     PersistentSettings persistentSettings;
-
-    hg::Publisher<EventType, Event> events;
 
     hg::input::Actions<hg::utils::enum_t> input;
     hg::utils::Random random;

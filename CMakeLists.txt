@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.24)
-project(HGameTemplate)
+project(CircuitSim)
 
 set(CMAKE_REQUIRED_LIBRARIES "-L${atomic_lib_dir}" "-latomic")
 
